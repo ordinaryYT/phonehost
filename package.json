@@ -1,7 +1,7 @@
 {
   "name": "vsphone-web",
   "version": "1.0.0",
-  "description": "Control VSPhone cloud phones from a website",
+  "description": "Interactive VSPhone web dashboard",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

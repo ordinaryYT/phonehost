@@ -10,40 +10,56 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Serve index.html directly from the root
+// Serve index.html directly
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// VSPhone API credentials
-const API_URL = 'https://cloud.vsphone.com/vsphone/api/padApi/userPadList';
+// VSPhone credentials
 const API_KEY = process.env.VSPHONE_API_KEY;
 const API_SECRET = process.env.VSPHONE_API_SECRET;
 
-// Call VSPhone API
-async function callVsphoneApi() {
+// Helper to call VSPhone API
+async function callVsphoneApi(endpoint, payload = {}) {
+    const API_BASE = 'https://cloud.vsphone.com/vsphone/api/padApi/';
     try {
-        const payload = {}; // Add payload according to VSPhone API docs
-        const response = await axios.post(API_URL, payload, {
+        const response = await axios.post(API_BASE + endpoint, payload, {
             headers: {
-                'Content-Type': 'application/json',
                 'X-API-KEY': API_KEY,
-                'X-API-SECRET': API_SECRET
+                'X-API-SECRET': API_SECRET,
+                'Content-Type': 'application/json'
             }
         });
         return response.data;
     } catch (err) {
         console.error(err.response?.data || err.message);
-        return { error: 'Failed to fetch cloud phones' };
+        return { error: 'VSPhone API call failed' };
     }
 }
 
-// API endpoint for frontend
+// List cloud phones
 app.get('/api/phones', async (req, res) => {
-    const data = await callVsphoneApi();
+    const data = await callVsphoneApi('userPadList');
     res.json(data);
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+// Start interactive session for a phone
+app.post('/api/start-session', async (req, res) => {
+    const { phoneId } = req.body;
+    if (!phoneId) return res.status(400).json({ error: 'phoneId required' });
+    const payload = { padId: phoneId };
+    const data = await callVsphoneApi('startSession', payload);
+    res.json(data); // contains streamUrl
 });
+
+// Send input (tap, swipe, text) to phone
+app.post('/api/send-input', async (req, res) => {
+    const { phoneId, type, x, y, text, x2, y2 } = req.body;
+    if (!phoneId || !type) return res.status(400).json({ error: 'phoneId and type required' });
+
+    const payload = { padId: phoneId, type, x, y, x2, y2, text };
+    const data = await callVsphoneApi('sendInput', payload);
+    res.json(data);
+});
+
+app.listen(port, () => console.log(`Server running on port ${port}`));

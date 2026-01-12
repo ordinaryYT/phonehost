@@ -1,76 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Cloud Phone Test</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 40px;
-    }
-    input, button {
-      padding: 10px;
-      margin: 8px;
-      border-radius: 6px;
-      border: none;
-    }
-    button {
-      background: #22c55e;
-      cursor: pointer;
-    }
-    #phone {
-      width: 360px;
-      height: 640px;
-      background: black;
-      margin-top: 20px;
-      display: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>VSPhone Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        button { padding: 0.5rem 1rem; margin-bottom: 1rem; }
+        pre { background: #f5f5f5; padding: 1rem; border-radius: 5px; }
+    </style>
 </head>
 <body>
+    <h1>VSPhone Dashboard</h1>
+    <button id="loadPhones">Load My Cloud Phones</button>
+    <pre id="result"></pre>
 
-  <h1>Free Cloud Phone</h1>
-  <input id="password" type="password" placeholder="Enter password" />
-  <button onclick="startPhone()">Launch Phone</button>
+    <script>
+        document.getElementById('loadPhones').addEventListener('click', async () => {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = 'Loading...';
 
-  <div id="phone"></div>
-
-  <!-- VSPhone H5 SDK -->
-  <script src="https://cloud.vsphone.com/static/sdk/armcloud-web-sdk.js"></script>
-
-  <script>
-    async function startPhone() {
-      const password = document.getElementById('password').value;
-
-      const res = await fetch('/get-phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-
-      if (!res.ok) {
-        alert('Access denied');
-        return;
-      }
-
-      const data = await res.json();
-
-      document.getElementById('phone').style.display = 'block';
-
-      const engine = new ArmcloudEngine({
-        appId: data.appId,
-        roomCode: data.roomCode,
-        token: data.token,
-        viewId: 'phone'
-      });
-
-      engine.start();
-    }
-  </script>
+            try {
+                const res = await fetch('/api/phones');
+                const data = await res.json();
+                resultEl.textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                resultEl.textContent = 'Error fetching phones';
+            }
+        });
+    </script>
 </body>
 </html>

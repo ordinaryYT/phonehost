@@ -1,32 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>VSPhone Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 2rem; }
-        button { padding: 0.5rem 1rem; margin-bottom: 1rem; }
-        pre { background: #f5f5f5; padding: 1rem; border-radius: 5px; }
-    </style>
+<meta charset="UTF-8">
+<title>VSPhone Interactive Dashboard</title>
+<style>
+  body { font-family: Arial; margin: 2rem; }
+  #phoneContainer { display: flex; flex-wrap: wrap; gap: 1rem; }
+  canvas { border: 1px solid #ccc; touch-action: none; }
+  button, select { margin: 0.5rem; padding: 0.4rem; }
+</style>
 </head>
 <body>
-    <h1>VSPhone Dashboard</h1>
-    <button id="loadPhones">Load My Cloud Phones</button>
-    <pre id="result"></pre>
+<h1>VSPhone Interactive Dashboard</h1>
+<button id="loadPhones">Load My Cloud Phones</button>
+<select id="phoneSelect"></select>
+<div id="phoneContainer"></div>
 
-    <script>
-        document.getElementById('loadPhones').addEventListener('click', async () => {
-            const resultEl = document.getElementById('result');
-            resultEl.textContent = 'Loading...';
+<script>
+let phones = {};
+const container = document.getElementById('phoneContainer');
+const select = document.getElementById('phoneSelect');
 
-            try {
-                const res = await fetch('/api/phones');
-                const data = await res.json();
-                resultEl.textContent = JSON.stringify(data, null, 2);
-            } catch (err) {
-                resultEl.textContent = 'Error fetching phones';
-            }
+// Load list of cloud phones
+document.getElementById('loadPhones').addEventListener('click', async () => {
+    const res = await fetch('/api/phones');
+    const data = await res.json();
+    select.innerHTML = '';
+    phones = {};
+    if (data.list && data.list.length) {
+        data.list.forEach(p => {
+            phones[p.padId] = p;
+            const option = document.createElement('option');
+            option.value = p.padId;
+            option.textContent = `${p.padName} (${p.padId})`;
+            select.appendChild(option);
         });
-    </script>
+        startPhoneSession(select.value);
+    } else {
+        alert('No cloud phones found');
+    }
+});
+
+// Start interactive session for selected phone
+async function startPhoneSession(phoneId) {
+    if (!phoneId) return;
+    // Remove old canvas if exists
+    const oldCanvas = document.getElementById(`canvas-${phoneId}`);
+    if (oldCanvas) oldCanvas.remove();
+
+    const res = await fetch('/api/start-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneId })
+    });
+    const data = await res.json();
+    const streamUrl = data.streamUrl; // VSPhone stream URL
+
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 360;
+    canvas.height = 640;
+    canvas.id = `canvas-${phoneId}`;
+    container.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    // Stream video
+    const video = document.createElement('video');
+    video.src = streamUrl;
+    video.autoplay = true;
+    video.muted = true;
+    video.width = canvas.width;
+    video.height = canvas.height;
+    video.onplay = () => {
+        const draw = () => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            requestAnimationFrame(draw);
+        };
+        draw();
+    };
+
+    // Handle taps
+    let startX, startY;
+    canvas.addEventListener('pointerdown', e => {
+        const rect = canvas.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+    });
+    canvas.addEventListener('pointerup', async e => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        let type = 'tap';
+        if (Math.abs(x - startX) > 10 || Math.abs(y - startY) > 10) type = 'swipe';
+        await fetch('/api/send-input', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phoneId, type, x: startX, y: startY, x2: x, y2: y })
+        });
+    });
+
+    // Handle keyboard input
+    window.addEventListener('keydown', async e => {
+        await fetch('/api/send-input', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phoneId, type: 'text', text: e.key })
+        });
+    });
+}
+
+// Switch phone session
+select.addEventListener('change', () => {
+    startPhoneSession(select.value);
+});
+</script>
 </body>
 </html>

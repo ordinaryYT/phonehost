@@ -5,54 +5,37 @@
 <title>VSPhone Dashboard</title>
 <style>
   body { font-family: Arial; margin: 2rem; }
-  #phoneContainer { display: flex; flex-wrap: wrap; gap: 1rem; }
+  #phoneContainer { margin-top: 1rem; }
   canvas { border: 1px solid #ccc; touch-action: none; }
-  select { margin-bottom: 1rem; padding: 0.3rem; }
+  input, button { padding: 0.4rem; margin: 0.3rem 0; }
 </style>
 </head>
 <body>
 <h1>VSPhone Interactive Dashboard</h1>
-<button id="loadPhones">Load My Cloud Phones</button>
-<select id="phoneSelect"></select>
+
+<label>Enter Phone ID (padId):</label><br>
+<input type="text" id="phoneIdInput" placeholder="Phone ID">
+<button id="startSessionBtn">Start Phone Session</button>
+
 <div id="phoneContainer"></div>
 
 <script>
-let phones = {};
+let phoneId;
 const container = document.getElementById('phoneContainer');
-const select = document.getElementById('phoneSelect');
+const phoneIdInput = document.getElementById('phoneIdInput');
+const startBtn = document.getElementById('startSessionBtn');
 
-// Load phones from server
-document.getElementById('loadPhones').addEventListener('click', async () => {
-    const res = await fetch('/api/phones');
-    const data = await res.json();
-    phones = {};
-    container.innerHTML = '';
-    select.innerHTML = '';
-
-    if (data.length === 0) {
-        alert('No cloud phones found or not running');
+startBtn.addEventListener('click', async () => {
+    phoneId = phoneIdInput.value.trim();
+    if (!phoneId) {
+        alert('Please enter a Phone ID');
         return;
     }
 
-    data.forEach(p => {
-        phones[p.padId] = p;
-        const option = document.createElement('option');
-        option.value = p.padId;
-        option.textContent = `${p.padName} (${p.padId})`;
-        select.appendChild(option);
-    });
+    // Remove old canvas
+    container.innerHTML = '';
 
-    startPhoneSession(select.value); // auto-start first phone
-});
-
-// Start interactive session for a phone
-async function startPhoneSession(phoneId) {
-    if (!phoneId) return;
-
-    // Remove old canvas for this phone
-    const oldCanvas = document.getElementById(`canvas-${phoneId}`);
-    if (oldCanvas) oldCanvas.remove();
-
+    // Start session
     const res = await fetch('/api/start-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,10 +43,13 @@ async function startPhoneSession(phoneId) {
     });
     const data = await res.json();
     const streamUrl = data.streamUrl;
+    if (!streamUrl) {
+        alert('Failed to start session. Check Phone ID.');
+        return;
+    }
 
     // Create canvas
     const canvas = document.createElement('canvas');
-    canvas.id = `canvas-${phoneId}`;
     canvas.width = 360;
     canvas.height = 640;
     container.appendChild(canvas);
@@ -84,14 +70,13 @@ async function startPhoneSession(phoneId) {
         draw();
     };
 
-    // Handle tap/swipe
+    // Tap/Swipe
     let startX, startY;
     canvas.addEventListener('pointerdown', e => {
         const rect = canvas.getBoundingClientRect();
         startX = e.clientX - rect.left;
         startY = e.clientY - rect.top;
     });
-
     canvas.addEventListener('pointerup', async e => {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -113,11 +98,6 @@ async function startPhoneSession(phoneId) {
             body: JSON.stringify({ phoneId, type: 'text', text: e.key })
         });
     });
-}
-
-// Switch phones
-select.addEventListener('change', () => {
-    startPhoneSession(select.value);
 });
 </script>
 </body>

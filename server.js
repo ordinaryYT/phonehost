@@ -37,18 +37,11 @@ async function callVsphoneApi(endpoint, payload = {}) {
     }
 }
 
-// Get list of phones
-app.get('/api/phones', async (req, res) => {
-    const data = await callVsphoneApi('userPadList');
-    // VSPhone may return list under data.list or data.data.list
-    const list = data.list || (data.data && data.data.list) || [];
-    res.json(list);
-});
-
 // Start interactive session
 app.post('/api/start-session', async (req, res) => {
     const { phoneId } = req.body;
     if (!phoneId) return res.status(400).json({ error: 'phoneId required' });
+
     const payload = { padId: phoneId };
     const data = await callVsphoneApi('startSession', payload);
     res.json(data);
@@ -58,6 +51,7 @@ app.post('/api/start-session', async (req, res) => {
 app.post('/api/send-input', async (req, res) => {
     const { phoneId, type, x, y, x2, y2, text } = req.body;
     if (!phoneId || !type) return res.status(400).json({ error: 'phoneId and type required' });
+
     const payload = { padId: phoneId, type, x, y, x2, y2, text };
     const data = await callVsphoneApi('sendInput', payload);
     res.json(data);

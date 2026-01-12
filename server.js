@@ -8,6 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
@@ -16,14 +17,13 @@ app.get('/', (req, res) => {
 const API_KEY = process.env.VSPHONE_API_KEY;
 const API_SECRET = process.env.VSPHONE_API_SECRET;
 
-// Helper to call VSPhone API
+// Helper to call VSPhone API with proper Authorization header
 async function callVsphoneApi(endpoint, payload = {}) {
-    const API_BASE = "https://api.vsphone.com/vsphone/api/padApi/"; // Correct base
+    const API_BASE = "https://api.vsphone.com/vsphone/api/padApi/"; // Correct API base
     try {
         const response = await axios.post(API_BASE + endpoint, payload, {
             headers: {
-                "X-API-KEY": API_KEY,
-                "X-API-SECRET": API_SECRET,
+                "Authorization": `VSPhone ${API_KEY}:${API_SECRET}`, // <--- fixed
                 "Content-Type": "application/json"
             }
         });

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>VSPhone Dashboard</title>
+<title>VSPhone Interactive Dashboard</title>
+<script src="https://unpkg.com/armcloud-rtc/dist/armcloud.min.js"></script>
 <style>
   body { font-family: Arial; margin: 2rem; }
-  #phoneContainer { margin-top: 1rem; }
-  canvas { border: 1px solid #ccc; touch-action: none; }
+  #phoneView { width: 360px; height: 640px; border: 1px solid #ccc; margin-top: 1rem; }
   input, button { padding: 0.4rem; margin: 0.3rem 0; }
 </style>
 </head>
@@ -15,89 +15,34 @@
 
 <label>Enter Phone ID (padId):</label><br>
 <input type="text" id="phoneIdInput" placeholder="Phone ID">
-<button id="startSessionBtn">Start Phone Session</button>
+<button id="connectBtn">Connect Phone</button>
 
-<div id="phoneContainer"></div>
+<div id="phoneView"></div>
 
 <script>
-let phoneId;
-const container = document.getElementById('phoneContainer');
-const phoneIdInput = document.getElementById('phoneIdInput');
-const startBtn = document.getElementById('startSessionBtn');
+document.getElementById("connectBtn").addEventListener("click", async () => {
+    const phoneId = document.getElementById("phoneIdInput").value.trim();
+    if (!phoneId) return alert("Enter phone ID");
 
-startBtn.addEventListener('click', async () => {
-    phoneId = phoneIdInput.value.trim();
-    if (!phoneId) {
-        alert('Please enter a Phone ID');
-        return;
-    }
-
-    // Remove old canvas
-    container.innerHTML = '';
-
-    // Start session
-    const res = await fetch('/api/start-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    // Request SDK token from backend
+    const res = await fetch("/api/getToken", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneId })
     });
     const data = await res.json();
-    const streamUrl = data.streamUrl;
-    if (!streamUrl) {
-        alert('Failed to start session. Check Phone ID.');
-        return;
-    }
+    if (!data.token) return alert("Failed to get SDK token");
 
-    // Create canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = 360;
-    canvas.height = 640;
-    container.appendChild(canvas);
-    const ctx = canvas.getContext('2d');
-
-    // Stream video
-    const video = document.createElement('video');
-    video.src = streamUrl;
-    video.autoplay = true;
-    video.muted = true;
-    video.width = canvas.width;
-    video.height = canvas.height;
-    video.onplay = () => {
-        const draw = () => {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            requestAnimationFrame(draw);
-        };
-        draw();
-    };
-
-    // Tap/Swipe
-    let startX, startY;
-    canvas.addEventListener('pointerdown', e => {
-        const rect = canvas.getBoundingClientRect();
-        startX = e.clientX - rect.left;
-        startY = e.clientY - rect.top;
-    });
-    canvas.addEventListener('pointerup', async e => {
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        let type = 'tap';
-        if (Math.abs(x - startX) > 10 || Math.abs(y - startY) > 10) type = 'swipe';
-        await fetch('/api/send-input', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phoneId, type, x: startX, y: startY, x2: x, y2: y })
-        });
+    // Initialize Web SDK
+    const engine = new ArmcloudEngine({
+        baseUrl: "https://openapi-hk.armcloud.net", // Use correct SDK server
+        token: data.token,
+        viewId: "phoneView"
     });
 
-    // Keyboard input
-    window.addEventListener('keydown', async e => {
-        await fetch('/api/send-input', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phoneId, type: 'text', text: e.key })
-        });
-    });
+    engine.start(); // Connect and display the phone
+
+    // Optionally, you can add keyboard/mouse input events here
 });
 </script>
 </body>

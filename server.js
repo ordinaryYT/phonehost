@@ -10,7 +10,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// ENV VARS REQUIRED ON RENDER
+// REQUIRED ENV VARS
 const ACCESS_KEY = process.env.VSPHONE_ACCESS_KEY;
 const SECRET_KEY = process.env.VSPHONE_SECRET_KEY;
 const FREE_PAD_CODE = process.env.FREE_PAD_CODE;
@@ -18,7 +18,7 @@ const FREE_PASSWORD = process.env.FREE_PASSWORD;
 
 const API_HOST = 'https://api.vsphone.com';
 
-// SIGN FUNCTION
+// SIGN FUNCTION (VSPhone compliant)
 function sign(params) {
   const sortedKeys = Object.keys(params).sort();
   const query = sortedKeys.map(k => `${k}=${params[k]}`).join('&');
@@ -44,17 +44,25 @@ app.post('/get-phone', async (req, res) => {
       timestamp: Date.now()
     };
 
-    const signature = sign(params);
+    const signValue = sign(params);
+
+    const form = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => form.append(k, v));
+    form.append('sign', signValue);
 
     const response = await axios.post(
       `${API_HOST}/vsphone/api/padApi/stsTokenByPadCode`,
-      { ...params, sign: signature },
-      { headers: { 'Content-Type': 'application/json' } }
+      form.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
     );
 
     res.json(response.data.data);
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error('VSPhone Error:', err.response?.data || err.message);
     res.status(500).json({ error: 'VSPhone API error' });
   }
 });

@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>VSPhone Interactive Dashboard</title>
+<title>VSPhone Dashboard</title>
 <style>
   body { font-family: Arial; margin: 2rem; }
   #phoneContainer { display: flex; flex-wrap: wrap; gap: 1rem; }
   canvas { border: 1px solid #ccc; touch-action: none; }
-  button, select { margin: 0.5rem; padding: 0.4rem; }
+  select { margin-bottom: 1rem; padding: 0.3rem; }
 </style>
 </head>
 <body>
@@ -21,30 +21,35 @@ let phones = {};
 const container = document.getElementById('phoneContainer');
 const select = document.getElementById('phoneSelect');
 
-// Load list of cloud phones
+// Load phones from server
 document.getElementById('loadPhones').addEventListener('click', async () => {
     const res = await fetch('/api/phones');
     const data = await res.json();
-    select.innerHTML = '';
     phones = {};
-    if (data.list && data.list.length) {
-        data.list.forEach(p => {
-            phones[p.padId] = p;
-            const option = document.createElement('option');
-            option.value = p.padId;
-            option.textContent = `${p.padName} (${p.padId})`;
-            select.appendChild(option);
-        });
-        startPhoneSession(select.value);
-    } else {
-        alert('No cloud phones found');
+    container.innerHTML = '';
+    select.innerHTML = '';
+
+    if (data.length === 0) {
+        alert('No cloud phones found or not running');
+        return;
     }
+
+    data.forEach(p => {
+        phones[p.padId] = p;
+        const option = document.createElement('option');
+        option.value = p.padId;
+        option.textContent = `${p.padName} (${p.padId})`;
+        select.appendChild(option);
+    });
+
+    startPhoneSession(select.value); // auto-start first phone
 });
 
-// Start interactive session for selected phone
+// Start interactive session for a phone
 async function startPhoneSession(phoneId) {
     if (!phoneId) return;
-    // Remove old canvas if exists
+
+    // Remove old canvas for this phone
     const oldCanvas = document.getElementById(`canvas-${phoneId}`);
     if (oldCanvas) oldCanvas.remove();
 
@@ -54,13 +59,13 @@ async function startPhoneSession(phoneId) {
         body: JSON.stringify({ phoneId })
     });
     const data = await res.json();
-    const streamUrl = data.streamUrl; // VSPhone stream URL
+    const streamUrl = data.streamUrl;
 
     // Create canvas
     const canvas = document.createElement('canvas');
+    canvas.id = `canvas-${phoneId}`;
     canvas.width = 360;
     canvas.height = 640;
-    canvas.id = `canvas-${phoneId}`;
     container.appendChild(canvas);
     const ctx = canvas.getContext('2d');
 
@@ -79,13 +84,14 @@ async function startPhoneSession(phoneId) {
         draw();
     };
 
-    // Handle taps
+    // Handle tap/swipe
     let startX, startY;
     canvas.addEventListener('pointerdown', e => {
         const rect = canvas.getBoundingClientRect();
         startX = e.clientX - rect.left;
         startY = e.clientY - rect.top;
     });
+
     canvas.addEventListener('pointerup', async e => {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -99,7 +105,7 @@ async function startPhoneSession(phoneId) {
         });
     });
 
-    // Handle keyboard input
+    // Keyboard input
     window.addEventListener('keydown', async e => {
         await fetch('/api/send-input', {
             method: 'POST',
@@ -109,7 +115,7 @@ async function startPhoneSession(phoneId) {
     });
 }
 
-// Switch phone session
+// Switch phones
 select.addEventListener('change', () => {
     startPhoneSession(select.value);
 });

@@ -2,60 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>VSPhone Direct Connect</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VSPhone Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+  <!-- H5 SDK -->
   <script src="https://cdn.jsdelivr.net/npm/armcloud-rtc/dist/armcloud-rtc.min.js"></script>
+
   <style>
-    body { margin:0; font-family:Arial,sans-serif; background:#0f172a; color:#e5e7eb; }
-    header { padding:16px; border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center; }
-    #controls { margin:16px; }
-    input { padding:8px; border-radius:6px; border:none; width:250px; margin-right:8px; }
-    button { padding:8px 14px; border-radius:6px; border:none; background:#2563eb; color:white; cursor:pointer; }
-    #phoneBox { margin:16px; height:calc(100vh - 100px); background:black; border-radius:8px; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e5e7eb; }
+    #sidebar { width: 300px; height: 100vh; overflow: auto; float: left; border-right: 1px solid #1e293b; padding: 16px; }
+    .device { margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 8px; }
+    .device button { margin-top: 6px; padding: 6px; background: #2563eb; border: none; color: white; cursor: pointer; }
+    #phoneBox { margin-left: 300px; height: calc(100vh - 24px); background: black; }
   </style>
 </head>
 <body>
 
-<header>
-  <h2>VSPhone Direct Connect</h2>
-</header>
-
-<div id="controls">
-  <input type="text" id="deviceId" placeholder="Enter Device ID" />
-  <button onclick="connect()">Connect</button>
+<div id="sidebar">
+  <h3>Your Devices</h3>
+  <button onclick="loadDevices()">Refresh</button>
+  <div id="devices"></div>
 </div>
 
-<div id="phoneBox">Cloud phone will appear here</div>
+<div id="phoneBox">Click a device to connect</div>
 
 <script>
-async function connect() {
-  const deviceId = document.getElementById("deviceId").value.trim();
-  if (!deviceId) { alert("Please enter a Device ID"); return; }
-
-  try {
-    const res = await fetch("/api/connect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId })
-    });
-
-    const data = await res.json();
-    if (data.error) { alert(data.error); return; }
-
-    const engine = new ArmcloudEngine({
-      appId: data.appId,
-      roomCode: data.roomCode,
-      token: data.token,
-      deviceInfo: data.deviceInfo,
-      viewId: "phoneBox"
-    });
-
-    engine.start();
-  } catch (err) {
-    console.error(err);
-    alert("Failed to connect to VSPhone API");
-  }
+async function loadDevices() {
+  const res = await fetch("/api/devices", { method: "POST" });
+  const devices = await res.json();
+  document.getElementById("devices").innerHTML = "";
+  devices.forEach(d => {
+    const div = document.createElement("div");
+    div.className = "device";
+    div.innerHTML = `
+      <strong>${d.padCode || d.padcode}</strong><br/>
+      Status: ${d.cvmStatus || "unknown"}<br/>
+      <button onclick="connect('${d.padCode}')">Connect</button>
+    `;
+    document.getElementById("devices").appendChild(div);
+  });
 }
+
+async function connect(padCode) {
+  const tokenRes = await fetch("/api/sts", {
+    method: "POST",
+    headers:{ "Content-Type": "application/json" },
+    body: JSON.stringify({ padCode })
+  });
+  const { token } = await tokenRes.json();
+
+  if (!token) {
+    alert("Failed to get STS token");
+    return;
+  }
+
+  const engine = new ArmcloudEngine({
+    appId: "1000000",
+    roomCode: padCode,
+    token,
+    deviceInfo: { platform: "android" },
+    viewId: "phoneBox"
+  });
+
+  engine.start();
+}
+
+loadDevices();
 </script>
 
 </body>

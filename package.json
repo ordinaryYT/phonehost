@@ -1,13 +1,11 @@
 {
-  "name": "phone-control-bot",
+  "name": "vsphone-live",
   "version": "1.0.0",
-  "description": "Bot to send commands to Android app",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "discord.js": "^14.14.1"
+    "express": "^4.18.2"
   }
 }

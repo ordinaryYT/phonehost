@@ -1,49 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>VSPhone Interactive Dashboard</title>
-<script src="https://unpkg.com/armcloud-rtc/dist/armcloud.min.js"></script>
-<style>
-  body { font-family: Arial; margin: 2rem; }
-  #phoneView { width: 360px; height: 640px; border: 1px solid #ccc; margin-top: 1rem; }
-  input, button { padding: 0.4rem; margin: 0.3rem 0; }
-</style>
+  <meta charset="UTF-8" />
+  <title>VSPhone Live</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- VSPhone H5 SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/armcloud-rtc/dist/armcloud-rtc.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #020617;
+      color: #e5e7eb;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #1e293b;
+    }
+    #phoneBox {
+      width: 100%;
+      height: calc(100vh - 60px);
+      background: black;
+    }
+    button {
+      background: #2563eb;
+      border: none;
+      padding: 10px 14px;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-<h1>VSPhone Interactive Dashboard</h1>
 
-<label>Enter Phone ID (padId):</label><br>
-<input type="text" id="phoneIdInput" placeholder="Phone ID">
-<button id="connectBtn">Connect Phone</button>
+<header>
+  <button onclick="connect()">Connect Cloud Phone</button>
+</header>
 
-<div id="phoneView"></div>
+<div id="phoneBox"></div>
 
 <script>
-document.getElementById("connectBtn").addEventListener("click", async () => {
-    const phoneId = document.getElementById("phoneIdInput").value.trim();
-    if (!phoneId) return alert("Enter phone ID");
+async function connect() {
+  const res = await fetch("/api/connect", { method: "POST" });
+  const data = await res.json();
 
-    // Request SDK token from backend
-    const res = await fetch("/api/getToken", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneId })
-    });
-    const data = await res.json();
-    if (!data.token) return alert("Failed to get SDK token");
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
 
-    // Initialize Web SDK
-    const engine = new ArmcloudEngine({
-        baseUrl: "https://openapi-hk.armcloud.net", // Use correct SDK server
-        token: data.token,
-        viewId: "phoneView"
-    });
+  const engine = new ArmcloudEngine({
+    appId: data.appId,
+    roomCode: data.roomCode,
+    token: data.token,
+    deviceInfo: data.deviceInfo,
+    viewId: "phoneBox"
+  });
 
-    engine.start(); // Connect and display the phone
-
-    // Optionally, you can add keyboard/mouse input events here
-});
+  engine.start();
+}
 </script>
+
 </body>
 </html>

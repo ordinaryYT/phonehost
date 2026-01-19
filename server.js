@@ -12,7 +12,16 @@ app.use(express.json());
 const BASE_URL =
   process.env.ARM_BASE_URL || "https://openapi-hk.armcloud.net";
 
-// 🔐 Token endpoint
+// Serve frontend files
+app.use(express.static(__dirname));
+
+// Serve ArmCloud SDK from node_modules
+app.use(
+  "/armcloud",
+  express.static(path.join(__dirname, "node_modules/armcloud-rtc/dist"))
+);
+
+// Token API
 app.get("/api/token", async (req, res) => {
   try {
     const { padCode, userId } = req.query;
@@ -28,8 +37,8 @@ app.get("/api/token", async (req, res) => {
         headers: {
           accessKey: process.env.ARM_ACCESS_KEY,
           secretKey: process.env.ARM_SECRET_KEY,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+        },
       }
     );
 
@@ -40,9 +49,7 @@ app.get("/api/token", async (req, res) => {
   }
 });
 
-// 🌍 Serve frontend
-app.use(express.static(__dirname));
-
+// Catch-all for frontend routing
 app.get("*", (_, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });

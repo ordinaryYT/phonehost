@@ -1,64 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>vsPhone Web</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      margin: 0;
-      background: #0f0f0f;
-      color: #fff;
-      font-family: Arial, sans-serif;
-    }
-    #phoneBox {
-      width: 100vw;
-      height: 80vh;
-      background: #333;
-    }
-    .controls {
-      display: flex;
-      gap: 10px;
-      padding: 10px;
-    }
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-      cursor: pointer;
-    }
+    body { margin:0; background:#111; color:#fff; font-family: Arial,sans-serif; }
+    #phoneBox { width:100vw; height:80vh; background:#333; }
+    .controls { display:flex; gap:10px; padding:10px; }
+    button { padding:10px 16px; font-size:16px; cursor:pointer; }
   </style>
 </head>
-
 <body>
 
   <div id="phoneBox"></div>
 
   <div class="controls">
-    <button onclick="joinRoom()">Join Room</button>
-    <button onclick="leaveRoom()">Leave Room</button>
+    <button id="joinBtn">Join Room</button>
+    <button id="leaveBtn">Leave Room</button>
   </div>
 
   <script type="module">
-    import { ArmcloudEngine } from
-      "https://cdn.jsdelivr.net/npm/armcloud-rtc/+esm";
+    import { ArmcloudEngine } from "/armcloud/index.es.js";
 
     let armCloud = null;
 
     async function joinRoom() {
-      if (armCloud) return;
+      console.log("Join clicked");
 
-      const padCode = "AC22030020000"; // 🔴 CHANGE THIS
+      const padCode = "AC22030020000"; // 🔴 Replace with your vsPhone padCode
       const userId = crypto.randomUUID();
 
-      // Get token from server
-      const res = await fetch(
-        `/api/token?padCode=${padCode}&userId=${userId}`
-      );
+      console.log("Requesting token...");
+      const res = await fetch(`/api/token?padCode=${padCode}&userId=${userId}`);
       const json = await res.json();
 
+      console.log("Token response:", json);
+
       if (!json?.data?.token) {
-        alert("Token fetch failed");
+        alert("Failed to get token");
         return;
       }
 
@@ -73,9 +53,10 @@
         },
         callbacks: {
           onInit: async ({ code, msg }) => {
-            console.log("Init:", code, msg);
+            console.log("onInit:", code, msg);
             if (code === 0) {
               const supported = await armCloud.isSupported();
+              console.log("RTC supported:", supported);
               if (!supported) {
                 alert("Browser does not support WebRTC");
                 return;
@@ -83,12 +64,8 @@
               armCloud.start();
             }
           },
-          onConnectSuccess: () => {
-            console.log("Connected to vsPhone");
-          },
-          onConnectFail: ({ msg }) => {
-            alert("Connection failed: " + msg);
-          }
+          onConnectSuccess: () => { console.log("Connected to vsPhone"); },
+          onConnectFail: ({ msg }) => { alert("Connection failed: " + msg); }
         }
       });
     }
@@ -100,8 +77,8 @@
       }
     }
 
-    window.joinRoom = joinRoom;
-    window.leaveRoom = leaveRoom;
+    document.getElementById("joinBtn").addEventListener("click", joinRoom);
+    document.getElementById("leaveBtn").addEventListener("click", leaveRoom);
   </script>
 
 </body>

@@ -1,74 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>VSPhone Dashboard</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-
-  <!-- H5 SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/armcloud-rtc/dist/armcloud-rtc.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>vsPhone Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e5e7eb; }
-    #sidebar { width: 300px; height: 100vh; overflow: auto; float: left; border-right: 1px solid #1e293b; padding: 16px; }
-    .device { margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 8px; }
-    .device button { margin-top: 6px; padding: 6px; background: #2563eb; border: none; color: white; cursor: pointer; }
-    #phoneBox { margin-left: 300px; height: calc(100vh - 24px); background: black; }
+    body {
+      margin: 0;
+      background: #0f0f0f;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    #phoneBox {
+      width: 100vw;
+      height: 80vh;
+      background: #333;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+    }
   </style>
 </head>
+
 <body>
 
-<div id="sidebar">
-  <h3>Your Devices</h3>
-  <button onclick="loadDevices()">Refresh</button>
-  <div id="devices"></div>
-</div>
+  <div id="phoneBox"></div>
 
-<div id="phoneBox">Click a device to connect</div>
+  <div class="controls">
+    <button onclick="joinRoom()">Join Room</button>
+    <button onclick="leaveRoom()">Leave Room</button>
+  </div>
 
-<script>
-async function loadDevices() {
-  const res = await fetch("/api/devices", { method: "POST" });
-  const devices = await res.json();
-  document.getElementById("devices").innerHTML = "";
-  devices.forEach(d => {
-    const div = document.createElement("div");
-    div.className = "device";
-    div.innerHTML = `
-      <strong>${d.padCode || d.padcode}</strong><br/>
-      Status: ${d.cvmStatus || "unknown"}<br/>
-      <button onclick="connect('${d.padCode}')">Connect</button>
-    `;
-    document.getElementById("devices").appendChild(div);
-  });
-}
+  <script type="module">
+    import { ArmcloudEngine } from
+      "https://cdn.jsdelivr.net/npm/armcloud-rtc/+esm";
 
-async function connect(padCode) {
-  const tokenRes = await fetch("/api/sts", {
-    method: "POST",
-    headers:{ "Content-Type": "application/json" },
-    body: JSON.stringify({ padCode })
-  });
-  const { token } = await tokenRes.json();
+    let armCloud = null;
 
-  if (!token) {
-    alert("Failed to get STS token");
-    return;
-  }
+    async function joinRoom() {
+      if (armCloud) return;
 
-  const engine = new ArmcloudEngine({
-    appId: "1000000",
-    roomCode: padCode,
-    token,
-    deviceInfo: { platform: "android" },
-    viewId: "phoneBox"
-  });
+      const padCode = "AC22030020000"; // 🔴 CHANGE THIS
+      const userId = crypto.randomUUID();
 
-  engine.start();
-}
+      // Get token from server
+      const res = await fetch(
+        `/api/token?padCode=${padCode}&userId=${userId}`
+      );
+      const json = await res.json();
 
-loadDevices();
-</script>
+      if (!json?.data?.token) {
+        alert("Token fetch failed");
+        return;
+      }
+
+      armCloud = new ArmcloudEngine({
+        baseUrl: "https://openapi-hk.armcloud.net",
+        token: json.data.token,
+        viewId: "phoneBox",
+        deviceInfo: {
+          padCode,
+          userId,
+          mediaType: 3
+        },
+        callbacks: {
+          onInit: async ({ code, msg }) => {
+            console.log("Init:", code, msg);
+            if (code === 0) {
+              const supported = await armCloud.isSupported();
+              if (!supported) {
+                alert("Browser does not support WebRTC");
+                return;
+              }
+              armCloud.start();
+            }
+          },
+          onConnectSuccess: () => {
+            console.log("Connected to vsPhone");
+          },
+          onConnectFail: ({ msg }) => {
+            alert("Connection failed: " + msg);
+          }
+        }
+      });
+    }
+
+    function leaveRoom() {
+      if (armCloud) {
+        armCloud.stop();
+        armCloud = null;
+      }
+    }
+
+    window.joinRoom = joinRoom;
+    window.leaveRoom = leaveRoom;
+  </script>
 
 </body>
 </html>

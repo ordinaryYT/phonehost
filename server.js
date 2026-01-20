@@ -9,11 +9,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.static(__dirname));
 
-// vsPhone API host
 const BASE_URL = "https://api.vsphone.com";
 
 // ==============================
-// Token API (GET — REQUIRED)
+// Token API (FINAL FIX)
 // ==============================
 app.get("/api/token", async (req, res) => {
   try {
@@ -33,8 +32,9 @@ app.get("/api/token", async (req, res) => {
           userId
         },
         headers: {
-          "Access-Key": process.env.VSPHONE_ACCESS_KEY,
-          "Secret-Key": process.env.VSPHONE_SECRET_KEY
+          // 🔥 THESE NAMES MATTER
+          accessKey: process.env.VSPHONE_ACCESS_KEY,
+          secretKey: process.env.VSPHONE_SECRET_KEY
         }
       }
     );
@@ -58,7 +58,6 @@ app.get("*", (_, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`vsPhone web running on port ${PORT}`);

@@ -21,22 +21,20 @@
   </div>
 
   <script type="module">
-    import { ArmcloudEngine } from "/armcloud/index.es.js";
+    import { ArmcloudEngine } from "/index.es.js"; // 👈 SDK file in root
 
     let armCloud = null;
 
     async function joinRoom() {
       console.log("Join clicked");
 
-      // ✅ UPDATED PAD CODE
-      const padCode = "ACP5CI50MU5UKG02";
+      const padCode = "ACP5CI50MU5UKG02"; // ✅ YOUR PAD CODE
       const userId = crypto.randomUUID();
 
-      console.log("Requesting token...");
-      const res = await fetch(`/api/token?padCode=${padCode}&userId=${userId}`);
+      const res = await fetch(
+        `/api/token?padCode=${padCode}&userId=${userId}`
+      );
       const json = await res.json();
-
-      console.log("Token response:", json);
 
       if (!json?.data?.token) {
         alert("Failed to get token");
@@ -57,9 +55,8 @@
             console.log("onInit:", code, msg);
             if (code === 0) {
               const supported = await armCloud.isSupported();
-              console.log("RTC supported:", supported);
               if (!supported) {
-                alert("Browser does not support WebRTC");
+                alert("WebRTC not supported");
                 return;
               }
               armCloud.start();

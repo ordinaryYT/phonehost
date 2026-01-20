@@ -9,11 +9,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.static(__dirname));
 
-// ✅ vsPhone API HOST
+// vsPhone API host
 const BASE_URL = "https://api.vsphone.com";
 
 // ==============================
-// Token API (vsPhone)
+// Token API (GET — REQUIRED)
 // ==============================
 app.get("/api/token", async (req, res) => {
   try {
@@ -25,25 +25,31 @@ app.get("/api/token", async (req, res) => {
       });
     }
 
-    const response = await axios.post(
+    const response = await axios.get(
       `${BASE_URL}/vcpcloud/api/padApi/stsToken`,
       {
-        padCode,
-        userId
-      },
-      {
+        params: {
+          padCode,
+          userId
+        },
         headers: {
           "Access-Key": process.env.VSPHONE_ACCESS_KEY,
-          "Secret-Key": process.env.VSPHONE_SECRET_KEY,
-          "Content-Type": "application/json"
+          "Secret-Key": process.env.VSPHONE_SECRET_KEY
         }
       }
     );
 
     res.json(response.data);
   } catch (err) {
-    console.error("vsPhone TOKEN ERROR:", err.response?.data || err.message);
-    res.status(500).json(err.response?.data || { error: "Token request failed" });
+    console.error(
+      "vsPhone TOKEN ERROR:",
+      err.response?.status,
+      err.response?.data || err.message
+    );
+
+    res.status(err.response?.status || 500).json(
+      err.response?.data || { error: "Token request failed" }
+    );
   }
 });
 

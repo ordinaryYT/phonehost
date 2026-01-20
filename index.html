@@ -28,7 +28,8 @@
     async function joinRoom() {
       console.log("Join clicked");
 
-      const padCode = "AC22030020000"; // 🔴 Replace with your vsPhone padCode
+      // ✅ UPDATED PAD CODE
+      const padCode = "ACP5CI50MU5UKG02";
       const userId = crypto.randomUUID();
 
       console.log("Requesting token...");
@@ -64,8 +65,12 @@
               armCloud.start();
             }
           },
-          onConnectSuccess: () => { console.log("Connected to vsPhone"); },
-          onConnectFail: ({ msg }) => { alert("Connection failed: " + msg); }
+          onConnectSuccess: () => {
+            console.log("Connected to vsPhone");
+          },
+          onConnectFail: ({ msg }) => {
+            alert("Connection failed: " + msg);
+          }
         }
       });
     }
@@ -77,7 +82,6 @@
       }
     }
 
-    // ✅ Use event listeners (works with ES modules)
     document.getElementById("joinBtn").addEventListener("click", joinRoom);
     document.getElementById("leaveBtn").addEventListener("click", leaveRoom);
   </script>
